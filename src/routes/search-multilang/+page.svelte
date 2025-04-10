@@ -1,13 +1,34 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	let query = 'cola'; // default keyword
+	let query = 'cola';
 	let products = [];
+	let isLoading = false;
+	let errorMessage = '';
 
 	async function search() {
-		const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1`;
-		const res = await fetch(url);
-		const data = await res.json();
-		products = data.products;
+		isLoading = true;
+		errorMessage = '';
+		products = [];
+
+		try {
+			const apiUrl = `/api/translate-search?term=${encodeURIComponent(query)}`;
+			const res = await fetch(apiUrl);
+
+			if (!res.ok) {
+				const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+				throw new Error(errorData.error || `Request failed with status ${res.status}`);
+			}
+
+			const data = await res.json();
+			products = data.products || [];
+
+		} catch (error: any) {
+			console.error('Search failed:', error);
+			errorMessage = error.message || 'An unexpected error occurred.';
+			products = [];
+		} finally {
+			isLoading = false;
+		}
 	}
 
 	onMount(search);
@@ -15,8 +36,24 @@
 
 <h1 class="mb-4 text-2xl font-bold">Multilingual Search Demo</h1>
 
-<input bind:value={query} class="mr-2 rounded border p-2" placeholder="Enter a keyword (e.g. cola)" />
-<button on:click={search} class="rounded bg-blue-500 px-4 py-2 text-white">Search</button>
+<div class="mb-4 flex items-center">
+	<input bind:value={query} class="mr-2 rounded border p-2 flex-grow" placeholder="Enter a keyword (e.g. cola)" />
+	<button on:click={search} class="rounded bg-blue-500 px-4 py-2 text-white" disabled={isLoading}>
+		{#if isLoading}
+			Searching...
+		{:else}
+			Search
+		{/if}
+	</button>
+</div>
+
+{#if errorMessage}
+	<p class="mt-4 text-red-500">Error: {errorMessage}</p>
+{/if}
+
+{#if !isLoading && !errorMessage && products.length === 0}
+	<p class="mt-4 text-gray-500">No search results found.</p>
+{/if}
 
 {#if products.length > 0}
 	<ul class="mt-4 space-y-4">
@@ -35,6 +72,4 @@
 			</li>
 		{/each}
 	</ul>
-{:else}
-	<p class="mt-4 text-gray-500">No search results found.</p>
 {/if}

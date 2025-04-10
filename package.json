@@ -82,5 +82,8 @@
 			"@vercel/speed-insights",
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"@google-cloud/translate": "^9.0.1"
 	}
 }
